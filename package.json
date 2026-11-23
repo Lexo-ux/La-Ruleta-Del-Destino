@@ -1,0 +1,34 @@
+{
+  "name": "la-ruleta-del-destino",
+  "version": "1.0.0",
+  "description": "Discord Activity interactiva para hacer sorteos y ruletas de decisiones en tu servidor.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lexo-ux/La-Ruleta-Del-Destino.git"
+  },
+  "keywords": [
+    "discord",
+    "discord-activity",
+    "roulette",
+    "wheel",
+    "vite",
+    "canvas"
+  ],
+  "bugs": {
+    "url": "https://github.com/Lexo-ux/La-Ruleta-Del-Destino/issues"
+  },
+  "homepage": "https://github.com/Lexo-ux/La-Ruleta-Del-Destino#readme",
+  "dependencies": {
+    "@discord/embedded-app-sdk": "^2.5.0"
+  },
+  "devDependencies": {
+    "vite": "^8.3.8"
+  }
+}

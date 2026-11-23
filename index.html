@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>La Ruleta Del Destino — Discord Activity</title>
+    <meta
+      name="description"
+      content="Discord Activity interactiva para sorteos y ruletas de decisiones en tu servidor."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="brand">
+          <svg
+            class="brand-icon"
+            viewBox="0 0 32 32"
+            width="24"
+            height="24"
+            aria-hidden="true"
+          >
+            <circle cx="16" cy="16" r="15" fill="#1e1f22" />
+            <path d="M16 16 L16 3 A13 13 0 0 1 29 16 Z" fill="#5865F2" />
+            <path d="M16 16 L29 16 A13 13 0 0 1 16 29 Z" fill="#23a55a" />
+            <path d="M16 16 L16 29 A13 13 0 0 1 3 16 Z" fill="#fee75c" />
+            <path d="M16 16 L3 16 A13 13 0 0 1 16 3 Z" fill="#eb459e" />
+            <circle cx="16" cy="16" r="4" fill="#1e1f22" />
+            <circle cx="16" cy="16" r="2" fill="#f2f3f5" />
+          </svg>
+          <h1 class="brand-title">La Ruleta Del Destino</h1>
+        </div>
+
+        <div class="header-actions">
+          <div
+            id="discord-status"
+            class="status-pill status-local"
+            role="status"
+            aria-live="polite"
+            title="Estado de conexión con Discord"
+          >
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="discord-status-text">Modo Local</span>
+          </div>
+
+          <button
+            id="mute-btn"
+            type="button"
+            class="icon-btn"
+            aria-label="Silenciar audio"
+            aria-pressed="false"
+            title="Silenciar o activar efectos de sonido"
+          >
+            <svg
+              id="icon-sound-on"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+            </svg>
+            <svg
+              id="icon-sound-off"
+              class="hidden"
+              viewBox="0 0 24 24"
+              width="18"
+              height="18"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+              <line x1="23" y1="9" x2="17" y2="15" />
+              <line x1="17" y1="9" x2="23" y2="15" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="app-workspace">
+        <section class="wheel-stage" aria-label="Ruleta interactiva">
+          <div id="wheel-stage-box" class="wheel-stage-box">
+            <canvas
+              id="wheel-canvas"
+              aria-label="Ruleta de opciones"
+            ></canvas>
+          </div>
+
+          <div class="wheel-controls">
+            <button id="spin-btn" type="button" class="btn btn-primary btn-spin">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+              </svg>
+              <span id="spin-btn-label">Girar Ruleta</span>
+            </button>
+
+            <p id="wheel-hint" class="wheel-hint hidden">
+              Agrega al menos 2 opciones para poder girar
+            </p>
+
+            <div id="pip-last-winner" class="pip-winner hidden" aria-live="polite">
+              <span class="pip-winner-dot" id="pip-winner-dot"></span>
+              <span id="pip-winner-text"></span>
+            </div>
+          </div>
+        </section>
+
+        <aside class="control-panel" aria-label="Panel de opciones y resultados">
+          <div class="panel-tabs" role="tablist" aria-label="Modo de edición">
+            <button
+              id="tab-list"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              aria-controls="list-view"
+              class="tab-btn active"
+            >
+              Opciones
+              <span id="options-count" class="count-badge">4</span>
+            </button>
+            <button
+              id="tab-bulk"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              aria-controls="bulk-view"
+              class="tab-btn"
+            >
+              Edición en bloque
+            </button>
+          </div>
+
+          <form id="add-option-form" class="add-form" autocomplete="off">
+            <label for="option-input" class="sr-only">Agregar nueva opción</label>
+            <input
+              id="option-input"
+              type="text"
+              class="text-input"
+              placeholder="Agregar opción y presionar Enter..."
+              maxlength="80"
+            />
+            <button
+              id="add-option-btn"
+              type="submit"
+              class="btn btn-secondary btn-add"
+              aria-label="Agregar opción"
+              title="Agregar opción"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          </form>
+
+          <div class="panel-toolbar">
+            <button
+              id="shuffle-btn"
+              type="button"
+              class="btn btn-ghost"
+              title="Mezclar opciones al azar"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="16 3 21 3 21 8" />
+                <line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" />
+                <line x1="15" y1="15" x2="21" y2="21" />
+                <line x1="4" y1="4" x2="9" y2="9" />
+              </svg>
+              Mezclar
+            </button>
+
+            <button
+              id="clear-btn"
+              type="button"
+              class="btn btn-ghost btn-ghost-danger"
+              title="Vaciar toda la lista"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+              </svg>
+              Limpiar
+            </button>
+          </div>
+
+          <div id="list-view" role="tabpanel" aria-labelledby="tab-list" class="panel-body">
+            <ul id="options-list" class="options-list"></ul>
+            <div id="empty-options" class="empty-state hidden">
+              <p>La lista está vacía.</p>
+              <button id="restore-defaults-btn" type="button" class="btn btn-secondary btn-sm">
+                Cargar opciones de ejemplo
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="bulk-view"
+            role="tabpanel"
+            aria-labelledby="tab-bulk"
+            class="panel-body bulk-panel hidden"
+          >
+            <label for="bulk-textarea" class="sr-only">
+              Edición en bloque: una opción por línea
+            </label>
+            <textarea
+              id="bulk-textarea"
+              class="bulk-textarea"
+              placeholder="Escribe o pega una opción por línea..."
+              spellcheck="false"
+            ></textarea>
+            <div class="bulk-footer">
+              <span id="bulk-line-count" class="bulk-meta">0 opciones detectadas</span>
+              <button id="bulk-done-btn" type="button" class="btn btn-secondary btn-sm">
+                Ver en lista
+              </button>
+            </div>
+          </div>
+
+          <div class="panel-settings">
+            <label class="toggle-row" for="elimination-toggle">
+              <span class="toggle-label-group">
+                <span class="toggle-title">Eliminar ganador después del giro</span>
+                <span class="toggle-subtitle">Modo eliminación automática</span>
+              </span>
+              <span class="switch">
+                <input id="elimination-toggle" type="checkbox" />
+                <span class="switch-slider" aria-hidden="true"></span>
+              </span>
+            </label>
+          </div>
+
+          <section class="history-section" aria-label="Últimos resultados">
+            <div class="history-header">
+              <h2 class="section-heading">Últimos resultados</h2>
+              <button
+                id="clear-history-btn"
+                type="button"
+                class="text-link hidden"
+                title="Borrar historial"
+              >
+                Limpiar
+              </button>
+            </div>
+            <ul id="history-list" class="history-list"></ul>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+    <div
+      id="winner-modal"
+      class="modal-backdrop hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="winner-modal-heading"
+    >
+      <div class="modal-card">
+        <div id="winner-accent-bar" class="modal-accent-bar"></div>
+        <button
+          id="close-modal-x"
+          type="button"
+          class="modal-close-x"
+          aria-label="Cerrar anuncio"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
+        <div class="modal-trophy" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+            <path d="M4 22h16" />
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+          </svg>
+        </div>
+
+        <p id="winner-modal-heading" class="modal-kicker">¡Resultado de la ruleta!</p>
+        <div id="winner-name" class="winner-name"></div>
+        <p id="winner-subnote" class="winner-subnote hidden"></p>
+
+        <div class="modal-actions">
+          <button id="spin-again-btn" type="button" class="btn btn-primary">
+            Girar de nuevo
+          </button>
+          <button id="remove-winner-btn" type="button" class="btn btn-danger">
+            Quitar ganador y seguir
+          </button>
+          <button id="close-modal-btn" type="button" class="btn btn-secondary">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
