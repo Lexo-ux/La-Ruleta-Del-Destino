@@ -1,10 +1,10 @@
-const STORAGE_KEY = 'ruleta_del_destino_v1';
+const STORAGE_KEY = 'ruleta_del_destino_v2';
 
 export const DEFAULT_OPTIONS = [
-  '🎮 Noche de Juegos',
-  '🎬 Ver Película',
-  '🎵 Karaoke en Voz',
-  '🎲 Reto Sorpresa',
+  'Opción 1',
+  'Opción 2',
+  'Opción 3',
+  'Opción 4',
 ];
 
 const DEFAULT_STATE = {
