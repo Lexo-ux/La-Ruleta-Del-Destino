@@ -76,39 +76,39 @@ export class SoundEngine {
       const now = ctx.currentTime;
       const clampedSpeed = Math.max(0, Math.min(1, speedRatio));
 
-      // Percussive pitched body
+      // Woody clapper resonant body
       const osc = ctx.createOscillator();
       const oscGain = ctx.createGain();
       osc.type = 'triangle';
 
-      const startFreq = 780 + clampedSpeed * 420;
-      const endFreq = 260 + clampedSpeed * 90;
+      const startFreq = 620 + clampedSpeed * 320;
+      const endFreq = 195 + clampedSpeed * 75;
       osc.frequency.setValueAtTime(startFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.026);
+      osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.028);
 
-      const peakGain = 0.14 + clampedSpeed * 0.08;
+      const peakGain = 0.15 + clampedSpeed * 0.08;
       oscGain.gain.setValueAtTime(0.001, now);
       oscGain.gain.linearRampToValueAtTime(peakGain, now + 0.002);
-      oscGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.032);
+      oscGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.034);
 
       osc.connect(oscGain);
       oscGain.connect(ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.035);
+      osc.stop(now + 0.038);
 
-      // Subtle transient click snap
+      // Crisp hardwood tap transient
       if (this.noiseBuffer) {
         const noise = ctx.createBufferSource();
         noise.buffer = this.noiseBuffer;
 
         const filter = ctx.createBiquadFilter();
         filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(2200 + clampedSpeed * 900, now);
-        filter.Q.setValueAtTime(2.5, now);
+        filter.frequency.setValueAtTime(1750 + clampedSpeed * 700, now);
+        filter.Q.setValueAtTime(2.8, now);
 
         const noiseGain = ctx.createGain();
-        noiseGain.gain.setValueAtTime(0.09, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
+        noiseGain.gain.setValueAtTime(0.095, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
 
         noise.connect(filter);
         filter.connect(noiseGain);
@@ -121,7 +121,7 @@ export class SoundEngine {
   }
 
   /**
-   * Plays a celebratory short arpeggio when a winner is chosen.
+   * Plays a warm royal heraldic fanfare when a winner is chosen.
    */
   playVictory() {
     if (this.muted) return;
@@ -130,12 +130,12 @@ export class SoundEngine {
 
     try {
       const now = ctx.currentTime;
-      // Bright C major 9th chord arpeggio (C5, E5, G5, C6)
-      const notes = [523.25, 659.25, 783.99, 1046.5];
+      // Royal D major trumpet-like triad fanfare (D5, F#5, A5, D6)
+      const notes = [587.33, 739.99, 880.0, 1174.66];
 
       notes.forEach((freq, idx) => {
-        const start = now + idx * 0.075;
-        const duration = idx === notes.length - 1 ? 0.48 : 0.24;
+        const start = now + idx * 0.085;
+        const duration = idx === notes.length - 1 ? 0.54 : 0.25;
 
         const osc = ctx.createOscillator();
         const overtone = ctx.createOscillator();
@@ -144,18 +144,23 @@ export class SoundEngine {
         osc.type = 'triangle';
         osc.frequency.setValueAtTime(freq, start);
 
-        overtone.type = 'sine';
-        overtone.frequency.setValueAtTime(freq * 2, start);
+        overtone.type = 'sawtooth';
+        overtone.frequency.setValueAtTime(freq, start);
+
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2400, start);
 
         const overtoneGain = ctx.createGain();
-        overtoneGain.gain.setValueAtTime(0.18, start);
+        overtoneGain.gain.setValueAtTime(0.07, start);
 
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.linearRampToValueAtTime(0.16, start + 0.015);
+        gain.gain.linearRampToValueAtTime(0.16, start + 0.018);
         gain.gain.exponentialRampToValueAtTime(0.0008, start + duration);
 
         osc.connect(gain);
-        overtone.connect(overtoneGain);
+        overtone.connect(filter);
+        filter.connect(overtoneGain);
         overtoneGain.connect(gain);
         gain.connect(ctx.destination);
 

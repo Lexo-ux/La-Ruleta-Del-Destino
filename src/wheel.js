@@ -1,18 +1,18 @@
 const POINTER_ANGLE = -Math.PI / 2; // 12 o'clock (top)
 const WHEEL_FONT_FAMILY =
-  "'gg sans', 'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+  "'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, 'Times New Roman', serif";
 
 export const SLICE_PALETTE = [
-  { bg: '#5865F2', text: '#ffffff' }, // Discord Blurple
-  { bg: '#23a55a', text: '#ffffff' }, // Discord Green
-  { bg: '#fee75c', text: '#111214' }, // Discord Yellow
-  { bg: '#eb459e', text: '#ffffff' }, // Discord Fuchsia
-  { bg: '#00a8fc', text: '#ffffff' }, // Discord Cyan
-  { bg: '#ed4245', text: '#ffffff' }, // Discord Red
-  { bg: '#f0b232', text: '#111214' }, // Warm Amber
-  { bg: '#57f287', text: '#111214' }, // Mint Green
-  { bg: '#9b59b6', text: '#ffffff' }, // Amethyst
-  { bg: '#e67e22', text: '#ffffff' }, // Tangerine
+  { bg: '#8e2426', text: '#f7edd8' }, // Royal Crimson
+  { bg: '#1f4e79', text: '#f7edd8' }, // Knight Sapphire
+  { bg: '#d4a238', text: '#1c1208' }, // Burnished Gold
+  { bg: '#275d38', text: '#f7edd8' }, // Sherwood Emerald
+  { bg: '#5d346b', text: '#f7edd8' }, // Imperial Plum
+  { bg: '#b55422', text: '#f7edd8' }, // Copper Amber
+  { bg: '#d9c398', text: '#1c1208' }, // Aged Parchment
+  { bg: '#1f6363', text: '#f7edd8' }, // Verdigris Teal
+  { bg: '#6b3b24', text: '#f7edd8' }, // Chestnut Oak
+  { bg: '#9e7b22', text: '#1c1208' }, // Antique Brass
 ];
 
 export function normalizeAngle(rad) {
@@ -286,45 +286,79 @@ export class RouletteWheel {
     // Outer ambient shadow
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy + 4, outerRimR, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
-    ctx.filter = 'blur(8px)';
+    ctx.arc(cx, cy + 5, outerRimR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(6, 3, 1, 0.58)';
+    ctx.filter = 'blur(9px)';
     ctx.fill();
     ctx.restore();
 
-    // Outer metallic/Discord dark bezel
+    // Carved dark oak outer rim with turned wood gradient
     ctx.save();
+    const oakGrad = ctx.createRadialGradient(
+      cx - outerRimR * 0.2,
+      cy - outerRimR * 0.2,
+      wheelR * 0.85,
+      cx,
+      cy,
+      outerRimR
+    );
+    oakGrad.addColorStop(0, '#5a3a21');
+    oakGrad.addColorStop(0.55, '#3b2413');
+    oakGrad.addColorStop(1, '#201208');
+
     ctx.beginPath();
     ctx.arc(cx, cy, outerRimR, 0, Math.PI * 2);
-    ctx.fillStyle = '#1e1f22';
+    ctx.fillStyle = oakGrad;
     ctx.fill();
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+
+    // Outer burnished gold trim ring
+    const outerGoldGrad = ctx.createLinearGradient(
+      cx - outerRimR,
+      cy - outerRimR,
+      cx + outerRimR,
+      cy + outerRimR
+    );
+    outerGoldGrad.addColorStop(0, '#f7e094');
+    outerGoldGrad.addColorStop(0.35, '#c5922b');
+    outerGoldGrad.addColorStop(0.7, '#7c5514');
+    outerGoldGrad.addColorStop(1, '#e8c468');
+    ctx.lineWidth = Math.max(2, rimThickness * 0.16);
+    ctx.strokeStyle = outerGoldGrad;
     ctx.stroke();
 
-    // Inner bezel step
+    // Subtle concentric wood lathe groove on oak rim
     ctx.beginPath();
-    ctx.arc(cx, cy, wheelR + 2, 0, Math.PI * 2);
-    ctx.fillStyle = '#2b2d31';
+    ctx.arc(cx, cy, wheelR + rimThickness * 0.45, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(15, 8, 3, 0.48)';
+    ctx.stroke();
+
+    // Inner gold bezel ring framing the painted slices
+    ctx.beginPath();
+    ctx.arc(cx, cy, wheelR + 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#1b1109';
     ctx.fill();
+    ctx.lineWidth = Math.max(1.5, rimThickness * 0.14);
+    ctx.strokeStyle = '#c89832';
+    ctx.stroke();
     ctx.restore();
 
     const count = this.options.length;
 
     if (count === 0) {
-      // Empty state disc
+      // Empty oak disc
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx, cy, wheelR, 0, Math.PI * 2);
-      ctx.fillStyle = '#2b2d31';
+      ctx.fillStyle = '#291c12';
       ctx.fill();
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
-      ctx.strokeStyle = '#4e5058';
+      ctx.strokeStyle = '#8c651c';
       ctx.stroke();
 
-      ctx.fillStyle = '#949ba4';
-      ctx.font = `600 14px ${WHEEL_FONT_FAMILY}`;
+      ctx.fillStyle = '#c8b79b';
+      ctx.font = `700 14px ${WHEEL_FONT_FAMILY}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('Agrega opciones para girar', cx, cy + hubR + 26);
@@ -332,7 +366,7 @@ export class RouletteWheel {
     } else {
       const sliceArc = (Math.PI * 2) / count;
 
-      // Draw slices
+      // Draw painted oak slices
       for (let i = 0; i < count; i++) {
         const start = this.angle + i * sliceArc;
         const end = start + sliceArc;
@@ -346,25 +380,56 @@ export class RouletteWheel {
         ctx.fillStyle = palette.bg;
         ctx.fill();
 
-        // Subtle slice divider border
+        // Carved dark & gilded seam between wedges
         if (count > 1) {
-          ctx.lineWidth = count > 24 ? 1 : 1.75;
-          ctx.strokeStyle = 'rgba(17, 18, 20, 0.45)';
+          ctx.lineWidth = count > 24 ? 1 : 2;
+          ctx.strokeStyle = 'rgba(20, 11, 5, 0.65)';
           ctx.stroke();
+
+          if (count <= 28) {
+            ctx.lineWidth = 0.75;
+            ctx.strokeStyle = 'rgba(245, 215, 127, 0.3)';
+            ctx.stroke();
+          }
         }
         ctx.restore();
       }
 
-      // Subtle inner depth ring over slices
+      // Wood grain lathe rings & warm lacquered varnish shading
       ctx.save();
-      const shadeGrad = ctx.createRadialGradient(cx, cy, hubR, cx, cy, wheelR);
-      shadeGrad.addColorStop(0, 'rgba(0, 0, 0, 0.16)');
-      shadeGrad.addColorStop(0.55, 'rgba(0, 0, 0, 0)');
-      shadeGrad.addColorStop(1, 'rgba(0, 0, 0, 0.14)');
       ctx.beginPath();
       ctx.arc(cx, cy, wheelR, 0, Math.PI * 2);
-      ctx.fillStyle = shadeGrad;
-      ctx.fill();
+      ctx.clip();
+
+      const varnishGrad = ctx.createRadialGradient(
+        cx - wheelR * 0.15,
+        cy - wheelR * 0.15,
+        hubR,
+        cx,
+        cy,
+        wheelR
+      );
+      varnishGrad.addColorStop(0, 'rgba(20, 10, 4, 0.28)');
+      varnishGrad.addColorStop(0.45, 'rgba(255, 232, 180, 0.08)');
+      varnishGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0.04)');
+      varnishGrad.addColorStop(1, 'rgba(18, 9, 3, 0.34)');
+      ctx.fillStyle = varnishGrad;
+      ctx.fillRect(cx - wheelR, cy - wheelR, wheelR * 2, wheelR * 2);
+
+      // Subtle concentric wood grain lines rotating with the wheel
+      [0.42, 0.64, 0.81].forEach((ratio, idx) => {
+        ctx.beginPath();
+        ctx.arc(
+          cx,
+          cy,
+          wheelR * ratio,
+          this.angle + idx * 0.7,
+          this.angle + idx * 0.7 + Math.PI * 1.65
+        );
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(24, 12, 4, 0.12)';
+        ctx.stroke();
+      });
       ctx.restore();
 
       // Draw auto-fitted slice labels with clearance from hub and pointer tip
@@ -377,7 +442,6 @@ export class RouletteWheel {
       const innerTextR = hubR + Math.max(8, wheelR * 0.08);
       const maxTextWidth = Math.max(20, outerTextR - innerTextR);
 
-      // Constrain font size to wedge chord thickness so adjacent texts never overlap
       const chordCheckR = innerTextR + maxTextWidth * 0.42;
       const chordHeight =
         count === 1 ? wheelR * 0.25 : 2 * chordCheckR * Math.sin(sliceArc / 2);
@@ -411,8 +475,8 @@ export class RouletteWheel {
         );
         ctx.font = `700 ${fontSize}px ${WHEEL_FONT_FAMILY}`;
 
-        if (palette.text === '#ffffff') {
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        if (palette.text !== '#1c1208') {
+          ctx.shadowColor = 'rgba(12, 6, 2, 0.72)';
           ctx.shadowBlur = 3;
           ctx.shadowOffsetY = 1;
         }
@@ -423,54 +487,108 @@ export class RouletteWheel {
         ctx.restore();
       }
 
-      // Draw outer rim divider pegs
+      // Draw polished golden brass studs along the oak rim
       if (count > 1) {
-        const pegR = Math.max(1.8, Math.min(3.8, (rimThickness * 0.28 * 14) / Math.max(14, count * 0.7)));
-        const pegDist = wheelR + rimThickness * 0.45;
+        const pegR = Math.max(
+          2,
+          Math.min(4.2, (rimThickness * 0.3 * 14) / Math.max(14, count * 0.7))
+        );
+        const pegDist = wheelR + rimThickness * 0.48;
         for (let i = 0; i < count; i++) {
           const pegAngle = this.angle + i * sliceArc;
           const px = cx + Math.cos(pegAngle) * pegDist;
           const py = cy + Math.sin(pegAngle) * pegDist;
 
           ctx.save();
+          const pegGrad = ctx.createRadialGradient(
+            px - pegR * 0.3,
+            py - pegR * 0.3,
+            pegR * 0.1,
+            px,
+            py,
+            pegR
+          );
+          pegGrad.addColorStop(0, '#fff5c8');
+          pegGrad.addColorStop(0.55, '#d4a843');
+          pegGrad.addColorStop(1, '#68470f');
+
           ctx.beginPath();
           ctx.arc(px, py, pegR, 0, Math.PI * 2);
-          ctx.fillStyle = '#e3e5e8';
+          ctx.fillStyle = pegGrad;
           ctx.fill();
-          ctx.lineWidth = 1;
-          ctx.strokeStyle = '#111214';
+          ctx.lineWidth = 0.9;
+          ctx.strokeStyle = '#140c06';
           ctx.stroke();
           ctx.restore();
         }
       }
     }
 
-    // Center hub button
+    // Ornate Carved Oak & Gilded Gold Center Medallion
     ctx.save();
     ctx.beginPath();
-    ctx.arc(cx, cy, hubR + 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#1e1f22';
+    ctx.arc(cx, cy, hubR + 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#160e08';
     ctx.fill();
+
+    const hubGrad = ctx.createRadialGradient(
+      cx - hubR * 0.25,
+      cy - hubR * 0.25,
+      hubR * 0.1,
+      cx,
+      cy,
+      hubR
+    );
+    if (this.isHoveringHub) {
+      hubGrad.addColorStop(0, '#5a3a1e');
+      hubGrad.addColorStop(1, '#2b1a0d');
+    } else {
+      hubGrad.addColorStop(0, '#3e2715');
+      hubGrad.addColorStop(1, '#1d1108');
+    }
 
     ctx.beginPath();
     ctx.arc(cx, cy, hubR, 0, Math.PI * 2);
-    ctx.fillStyle = this.isHoveringHub ? '#4752c4' : '#2b2d31';
+    ctx.fillStyle = hubGrad;
     ctx.fill();
-    ctx.lineWidth = Math.max(2, hubR * 0.08);
-    ctx.strokeStyle =
-      this.options.length >= 2 && !this.isSpinning ? '#5865F2' : '#4e5058';
+
+    const hubGoldGrad = ctx.createLinearGradient(
+      cx - hubR,
+      cy - hubR,
+      cx + hubR,
+      cy + hubR
+    );
+    if (this.options.length >= 2 && !this.isSpinning) {
+      hubGoldGrad.addColorStop(0, '#fae49c');
+      hubGoldGrad.addColorStop(0.5, '#c8942a');
+      hubGoldGrad.addColorStop(1, '#7a5413');
+    } else {
+      hubGoldGrad.addColorStop(0, '#7e6a46');
+      hubGoldGrad.addColorStop(1, '#4a3d28');
+    }
+    ctx.lineWidth = Math.max(2.2, hubR * 0.1);
+    ctx.strokeStyle = hubGoldGrad;
+    ctx.stroke();
+
+    // Inner hairline gold ring inside center boss
+    ctx.beginPath();
+    ctx.arc(cx, cy, hubR * 0.82, 0, Math.PI * 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(245, 215, 127, 0.32)';
     ctx.stroke();
 
     ctx.fillStyle =
-      this.options.length >= 2 && !this.isSpinning ? '#f2f3f5' : '#949ba4';
+      this.options.length >= 2 && !this.isSpinning ? '#f5d77f' : '#9c8b70';
     const hubFontSize = Math.max(8.5, Math.min(13, hubR * 0.34));
-    ctx.font = `800 ${hubFontSize}px ${WHEEL_FONT_FAMILY}`;
+    ctx.font = `700 ${hubFontSize}px ${WHEEL_FONT_FAMILY}`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.75)';
+    ctx.shadowBlur = 2;
     ctx.fillText(this.isSpinning ? '•••' : 'GIRAR', cx, cy + 0.5);
     ctx.restore();
 
-    // Top pointer (hinged above 12 o'clock, bounces physically with each peg)
+    // Top pointer (forged golden crest hinged above 12 o'clock)
     this.drawPointer(ctx, cx, cy, outerRimR, rimThickness);
   }
 
@@ -483,38 +601,51 @@ export class RouletteWheel {
     ctx.translate(cx, pivotY);
     ctx.rotate(this.pointerAngle);
 
-    // Subtle pointer shadow
+    // Drop shadow
     ctx.save();
-    ctx.translate(0, 2);
+    ctx.translate(0, 2.5);
     ctx.beginPath();
     ctx.moveTo(0, pointerLen);
     ctx.lineTo(-pointerHalfW, 2);
     ctx.arc(0, 2, pointerHalfW, Math.PI, 0, false);
     ctx.closePath();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillStyle = 'rgba(8, 4, 2, 0.6)';
     ctx.fill();
     ctx.restore();
 
-    // Pointer body (Discord Gold)
+    // Sculpted gilded spearhead pointer
+    const ptrGrad = ctx.createLinearGradient(-pointerHalfW, 0, pointerHalfW, pointerLen);
+    ptrGrad.addColorStop(0, '#fff2b8');
+    ptrGrad.addColorStop(0.45, '#d4a843');
+    ptrGrad.addColorStop(1, '#825711');
+
     ctx.beginPath();
     ctx.moveTo(0, pointerLen);
     ctx.lineTo(-pointerHalfW, 2);
     ctx.arc(0, 2, pointerHalfW, Math.PI, 0, false);
     ctx.closePath();
-    ctx.fillStyle = '#fee75c';
+    ctx.fillStyle = ptrGrad;
     ctx.fill();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#1e1f22';
+    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = '#180f08';
     ctx.stroke();
 
-    // Pivot rivet
+    // Center ridge gleam
     ctx.beginPath();
-    ctx.arc(0, 2, Math.max(3.5, pointerHalfW * 0.32), 0, Math.PI * 2);
-    ctx.fillStyle = '#1e1f22';
+    ctx.moveTo(0, 4);
+    ctx.lineTo(0, pointerLen - 2);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255, 248, 215, 0.55)';
+    ctx.stroke();
+
+    // Brass pivot rivet with crimson jewel core
+    ctx.beginPath();
+    ctx.arc(0, 2, Math.max(3.5, pointerHalfW * 0.34), 0, Math.PI * 2);
+    ctx.fillStyle = '#24160b';
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(0, 2, Math.max(1.8, pointerHalfW * 0.15), 0, Math.PI * 2);
-    ctx.fillStyle = '#f2f3f5';
+    ctx.arc(0, 2, Math.max(1.8, pointerHalfW * 0.17), 0, Math.PI * 2);
+    ctx.fillStyle = '#c83e3b';
     ctx.fill();
 
     ctx.restore();

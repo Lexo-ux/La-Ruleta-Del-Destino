@@ -1,11 +1,11 @@
 const CONFETTI_COLORS = [
-  '#5865F2', // Discord Blurple
-  '#23a55a', // Discord Green
-  '#fee75c', // Discord Yellow
-  '#eb459e', // Discord Fuchsia
-  '#00a8fc', // Discord Cyan
-  '#ed4245', // Discord Red
-  '#ffffff',
+  '#f5d77f', // Gold Leaf
+  '#d4a843', // Burnished Gold
+  '#a62b2e', // Royal Crimson
+  '#2d68a1', // Knight Sapphire
+  '#35824a', // Sherwood Emerald
+  '#f4ead5', // Ivory Parchment
+  '#c96f2d', // Copper Amber
 ];
 
 /**
