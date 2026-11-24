@@ -159,6 +159,39 @@ export class RouletteWheel {
     }
   }
 
+  setAngle(angle) {
+    if (this.isSpinning || typeof angle !== 'number' || !Number.isFinite(angle)) return;
+    this.angle = angle;
+    this.draw();
+  }
+
+  startSyncedSpin({ startRotation, targetRotation, duration, elapsedMs = 0, winner = null }) {
+    if (this.options.length < 2) return false;
+
+    const count = this.options.length;
+    const sliceArc = (Math.PI * 2) / count;
+    const safeElapsed = Math.max(0, Number(elapsedMs) || 0);
+    const now = performance.now();
+
+    this.startAngle = startRotation;
+    this.targetAngle = targetRotation;
+    this.spinDuration = Math.max(100, duration);
+    this.spinStartTime = now - safeElapsed;
+    this.lastFrameTime = now;
+    this.pendingWinner = winner;
+
+    const initialT = Math.min(1, safeElapsed / this.spinDuration);
+    this.angle = this.startAngle + (this.targetAngle - this.startAngle) * easeOutQuartic(initialT);
+    this.isSpinning = true;
+    this.isHoveringHub = false;
+    this.canvas.style.cursor = 'default';
+    this.lastUnwrappedSlice = Math.floor((POINTER_ANGLE - this.angle) / sliceArc);
+
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    this.rafId = requestAnimationFrame(this.animate);
+    return true;
+  }
+
   spin() {
     if (this.isSpinning || this.options.length < 2) return false;
 
@@ -181,6 +214,7 @@ export class RouletteWheel {
     this.spinDuration = 4800 + Math.floor(secureRandomUnit() * 900);
     this.spinStartTime = performance.now();
     this.lastFrameTime = this.spinStartTime;
+    this.pendingWinner = null;
     this.isSpinning = true;
     this.isHoveringHub = false;
     this.canvas.style.cursor = 'default';
@@ -223,11 +257,13 @@ export class RouletteWheel {
         this.isSpinning = false;
         const winnerIdx = getWinnerIndex(this.angle, count);
         const palette = getSlicePalette(winnerIdx, count);
-        this.onComplete({
+        const resolvedWinner = this.pendingWinner || {
           index: winnerIdx,
           label: this.options[winnerIdx],
           color: palette.bg,
-        });
+        };
+        this.pendingWinner = null;
+        this.onComplete(resolvedWinner);
       }
     }
 

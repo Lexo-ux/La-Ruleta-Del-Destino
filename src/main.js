@@ -1,4 +1,5 @@
 import { initDiscordEnvironment } from './discord.js';
+import { RoomSyncClient } from './sync.js';
 import { SoundEngine } from './audio.js';
 import { ConfettiCannon } from './confetti.js';
 import { RouletteWheel, getSlicePalette } from './wheel.js';
@@ -7,8 +8,12 @@ import { DEFAULT_OPTIONS, loadState, saveState } from './storage.js';
 const state = loadState();
 let activeTab = 'list';
 let lastWinner = null;
+let activeSpinStartedAt = null;
+let finishedSpinStartedAt = null;
 
 // DOM Elements
+const roomStatusEl = document.getElementById('room-status');
+const roomStatusTextEl = document.getElementById('room-status-text');
 const discordStatusEl = document.getElementById('discord-status');
 const discordStatusTextEl = document.getElementById('discord-status-text');
 const muteBtn = document.getElementById('mute-btn');
@@ -66,6 +71,19 @@ const wheel = new RouletteWheel(wheelCanvas, {
   onCenterClick: startSpin,
 });
 
+const syncClient = new RoomSyncClient({
+  onState: applyServerState,
+  onSpinStart: applyServerSpinStart,
+  onParticipants: (participants) => {
+    updateRoomStatus({
+      status: syncClient.status,
+      participants,
+      roomId: syncClient.roomId,
+    });
+  },
+  onConnectionChange: updateRoomStatus,
+});
+
 function formatTimeNow() {
   try {
     return new Date().toLocaleTimeString('es-ES', {
@@ -85,7 +103,9 @@ function syncSoundUI() {
     'aria-label',
     muted ? 'Activar audio' : 'Silenciar audio'
   );
-  muteBtn.title = muted ? 'Activar efectos de sonido' : 'Silenciar efectos de sonido';
+  muteBtn.title = muted
+    ? 'Activar efectos de sonido'
+    : 'Silenciar efectos de sonido';
   iconSoundOn.classList.toggle('hidden', muted);
   iconSoundOff.classList.toggle('hidden', !muted);
 }
@@ -94,6 +114,110 @@ function updateDiscordStatus({ mode, label, detail }) {
   discordStatusEl.className = `status-pill status-${mode}`;
   discordStatusTextEl.textContent = label;
   discordStatusEl.title = detail || label;
+}
+
+function updateRoomStatus({ status, participants, roomId }) {
+  if (status === 'connected') {
+    const count = Math.max(1, Number(participants) || 1);
+    roomStatusEl.className = 'status-pill status-live';
+    roomStatusTextEl.textContent = `En vivo · ${count} en sala`;
+    roomStatusEl.title = `Sincronizado en sala "${roomId}" (${count} conectados)`;
+  } else if (status === 'connecting') {
+    roomStatusEl.className = 'status-pill status-connecting';
+    roomStatusTextEl.textContent = 'Conectando...';
+    roomStatusEl.title = `Conectando a sala "${roomId}"`;
+  } else {
+    roomStatusEl.className = 'status-pill status-disconnected';
+    roomStatusTextEl.textContent = 'Sin conexión';
+    roomStatusEl.title = 'Sin servidor en tiempo real (reintentando cada 2s)';
+  }
+}
+
+function applyServerState(serverState, elapsedMs = 0) {
+  if (!serverState) return;
+
+  state.options = Array.isArray(serverState.options)
+    ? [...serverState.options]
+    : [...DEFAULT_OPTIONS];
+  state.history = Array.isArray(serverState.history)
+    ? serverState.history.slice(0, 5)
+    : [];
+  state.eliminationMode = Boolean(serverState.removeWinner);
+  eliminationToggle.checked = state.eliminationMode;
+
+  if (typeof serverState.participants === 'number') {
+    updateRoomStatus({
+      status: syncClient.status,
+      participants: serverState.participants,
+      roomId: syncClient.roomId,
+    });
+  }
+
+  wheel.setOptions(state.options);
+
+  if (serverState.spin) {
+    const spin = serverState.spin;
+    if (
+      activeSpinStartedAt !== spin.startedAt &&
+      finishedSpinStartedAt !== spin.startedAt
+    ) {
+      activeSpinStartedAt = spin.startedAt;
+      closeWinnerModal();
+      wheel.startSyncedSpin({
+        startRotation: spin.startRotation,
+        targetRotation: spin.targetRotation,
+        duration: spin.duration,
+        elapsedMs,
+        winner: spin.winner,
+      });
+    }
+  } else {
+    activeSpinStartedAt = null;
+    if (!wheel.isSpinning && typeof serverState.rotation === 'number') {
+      wheel.setAngle(serverState.rotation);
+    }
+    if (lastWinner && !winnerModal.classList.contains('hidden')) {
+      const stillExists = state.options.includes(lastWinner.label);
+      if (!stillExists && !lastWinner.removed) {
+        lastWinner.removed = true;
+        openWinnerModal(lastWinner);
+      } else {
+        spinAgainBtn.disabled = state.options.length < 2;
+      }
+    }
+  }
+
+  const shouldSyncBulk =
+    activeTab !== 'bulk' || document.activeElement !== bulkTextarea;
+  updateApp({ syncBulkText: shouldSyncBulk });
+}
+
+function applyServerSpinStart(serverState, elapsedMs = 0) {
+  if (!serverState || !serverState.spin) return;
+
+  state.options = Array.isArray(serverState.options)
+    ? [...serverState.options]
+    : state.options;
+  state.eliminationMode = Boolean(serverState.removeWinner);
+  eliminationToggle.checked = state.eliminationMode;
+  wheel.setOptions(state.options);
+
+  const spin = serverState.spin;
+  if (activeSpinStartedAt !== spin.startedAt) {
+    activeSpinStartedAt = spin.startedAt;
+    finishedSpinStartedAt = null;
+    closeWinnerModal();
+    sound.unlock();
+    wheel.startSyncedSpin({
+      startRotation: spin.startRotation,
+      targetRotation: spin.targetRotation,
+      duration: spin.duration,
+      elapsedMs,
+      winner: spin.winner,
+    });
+  }
+
+  updateApp({ syncBulkText: activeTab !== 'bulk' });
 }
 
 function renderOptionsList() {
@@ -250,6 +374,12 @@ function startSpin() {
   if (wheel.isSpinning || state.options.length < 2) return;
   closeWinnerModal();
   sound.unlock();
+
+  if (syncClient.isConnected()) {
+    syncClient.send({ type: 'SPIN' });
+    return;
+  }
+
   const started = wheel.spin();
   if (started) {
     syncControlsState();
@@ -262,24 +392,42 @@ function handleSpinComplete(winner) {
     return;
   }
 
+  if (activeSpinStartedAt !== null) {
+    finishedSpinStartedAt = activeSpinStartedAt;
+    activeSpinStartedAt = null;
+  }
+
   sound.playVictory();
   confetti.burst();
 
-  state.history.unshift({
-    label: winner.label,
-    color: winner.color,
-    time: formatTimeNow(),
-  });
-  state.history = state.history.slice(0, 5);
+  const isSynced = syncClient.isConnected();
 
-  let removed = false;
-  if (state.eliminationMode && winner.index < state.options.length) {
-    state.options.splice(winner.index, 1);
-    removed = true;
+  if (!isSynced) {
+    state.history.unshift({
+      label: winner.label,
+      color: winner.color,
+      time: formatTimeNow(),
+    });
+    state.history = state.history.slice(0, 5);
+
+    let removed = false;
+    if (state.eliminationMode && winner.index < state.options.length) {
+      state.options.splice(winner.index, 1);
+      removed = true;
+    }
+
+    lastWinner = { ...winner, removed };
+    updateApp({ syncBulkText: true });
+    openWinnerModal(lastWinner);
+    return;
   }
 
-  lastWinner = { ...winner, removed };
-  updateApp({ syncBulkText: true });
+  // In synced mode, server finishSpin() will broadcast updated history & options
+  lastWinner = {
+    ...winner,
+    removed: state.eliminationMode,
+  };
+  syncControlsState();
   openWinnerModal(lastWinner);
 }
 
@@ -330,9 +478,14 @@ addOptionForm.addEventListener('submit', (e) => {
   const value = optionInput.value.trim();
   if (!value) return;
 
-  state.options.push(value);
   optionInput.value = '';
   optionInput.focus();
+
+  if (syncClient.send({ type: 'ADD_OPTION', option: value })) {
+    return;
+  }
+
+  state.options.push(value);
   updateApp({ syncBulkText: true });
 });
 
@@ -342,29 +495,51 @@ optionsListEl.addEventListener('click', (e) => {
   if (!btn) return;
 
   const idx = Number(btn.dataset.index);
-  if (Number.isInteger(idx) && idx >= 0 && idx < state.options.length) {
-    state.options.splice(idx, 1);
-    updateApp({ syncBulkText: true });
+  if (!Number.isInteger(idx) || idx < 0 || idx >= state.options.length) return;
+
+  if (syncClient.send({ type: 'REMOVE_OPTION', index: idx })) {
+    return;
   }
+
+  state.options.splice(idx, 1);
+  updateApp({ syncBulkText: true });
 });
 
 shuffleBtn.addEventListener('click', () => {
   if (wheel.isSpinning || state.options.length < 2) return;
-  for (let i = state.options.length - 1; i > 0; i--) {
+
+  const shuffled = [...state.options];
+  for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [state.options[i], state.options[j]] = [state.options[j], state.options[i]];
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+
+  if (syncClient.send({ type: 'SET_OPTIONS', options: shuffled })) {
+    return;
+  }
+
+  state.options = shuffled;
   updateApp({ syncBulkText: true });
 });
 
 clearBtn.addEventListener('click', () => {
   if (wheel.isSpinning || state.options.length === 0) return;
+
+  if (syncClient.send({ type: 'SET_OPTIONS', options: [] })) {
+    return;
+  }
+
   state.options = [];
   updateApp({ syncBulkText: true });
 });
 
 restoreDefaultsBtn.addEventListener('click', () => {
   if (wheel.isSpinning) return;
+
+  if (syncClient.send({ type: 'SET_OPTIONS', options: [...DEFAULT_OPTIONS] })) {
+    return;
+  }
+
   state.options = [...DEFAULT_OPTIONS];
   updateApp({ syncBulkText: true });
 });
@@ -379,13 +554,22 @@ bulkTextarea.addEventListener('input', () => {
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean);
+
+  if (syncClient.send({ type: 'SET_OPTIONS', options: parsed })) {
+    return;
+  }
+
   state.options = parsed;
   updateApp({ syncBulkText: false });
 });
 
 eliminationToggle.checked = state.eliminationMode;
 eliminationToggle.addEventListener('change', () => {
-  state.eliminationMode = eliminationToggle.checked;
+  const nextVal = eliminationToggle.checked;
+  if (syncClient.send({ type: 'TOGGLE_REMOVE_WINNER', value: nextVal })) {
+    return;
+  }
+  state.eliminationMode = nextVal;
   saveState(state);
 });
 
@@ -398,6 +582,9 @@ muteBtn.addEventListener('click', () => {
 });
 
 clearHistoryBtn.addEventListener('click', () => {
+  if (syncClient.send({ type: 'CLEAR_HISTORY' })) {
+    return;
+  }
   state.history = [];
   renderHistory();
   saveState(state);
@@ -410,15 +597,24 @@ spinAgainBtn.addEventListener('click', () => {
 });
 
 removeWinnerBtn.addEventListener('click', () => {
-  if (
-    lastWinner &&
-    !lastWinner.removed &&
-    lastWinner.index >= 0 &&
-    lastWinner.index < state.options.length
-  ) {
-    state.options.splice(lastWinner.index, 1);
-    lastWinner.removed = true;
-    updateApp({ syncBulkText: true });
+  if (lastWinner && !lastWinner.removed) {
+    if (
+      syncClient.send({
+        type: 'REMOVE_WINNER_NOW',
+        index: lastWinner.index,
+        label: lastWinner.label,
+      })
+    ) {
+      lastWinner.removed = true;
+      closeWinnerModal();
+      return;
+    }
+
+    if (lastWinner.index >= 0 && lastWinner.index < state.options.length) {
+      state.options.splice(lastWinner.index, 1);
+      lastWinner.removed = true;
+      updateApp({ syncBulkText: true });
+    }
   }
   closeWinnerModal();
 });
@@ -448,4 +644,7 @@ window.addEventListener('resize', updateWheelSize);
 syncSoundUI();
 updateApp({ syncBulkText: true });
 updateWheelSize();
-initDiscordEnvironment(updateDiscordStatus);
+
+initDiscordEnvironment(updateDiscordStatus).then(({ isDiscord, roomId }) => {
+  syncClient.connect({ isDiscord, roomId });
+});

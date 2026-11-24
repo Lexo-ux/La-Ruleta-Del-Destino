@@ -35,6 +35,17 @@
 
         <div class="header-actions">
           <div
+            id="room-status"
+            class="status-pill status-connecting"
+            role="status"
+            aria-live="polite"
+            title="Estado de sincronización en tiempo real"
+          >
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="room-status-text">Conectando...</span>
+          </div>
+
+          <div
             id="discord-status"
             class="status-pill status-local"
             role="status"
